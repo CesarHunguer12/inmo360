@@ -1,0 +1,330 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  ADMINISTRADOR
+  AGENTE
+  CLIENTE
+}
+
+enum PropertyModality {
+  VENTA
+  ALQUILER
+  ANTICRETICO
+}
+
+enum PropertyType {
+  CASA
+  DEPARTAMENTO
+  TERRENO
+  OFICINA
+  LOCAL_COMERCIAL
+  OTRO
+}
+
+enum PropertyStatus {
+  DISPONIBLE
+  RESERVADA
+  NO_DISPONIBLE
+  INACTIVA
+}
+
+enum OpportunityStage {
+  NUEVA
+  CONTACTADA
+  INTERESADA
+  VISITA_PROGRAMADA
+  VISITADA
+  NEGOCIACION
+  CONCRETADA
+  PERDIDA
+}
+
+enum VisitStatus {
+  PENDIENTE
+  CONFIRMADA
+  REPROGRAMADA
+  CANCELADA
+  REALIZADA
+}
+
+enum InquiryStatus {
+  NUEVA
+  EN_ATENCION
+  RESPONDIDA
+  CERRADA
+}
+
+enum FollowUpStatus {
+  PENDIENTE
+  COMPLETADO
+  CANCELADO
+}
+
+enum OperationStatus {
+  REGISTRADA
+  ANULADA
+}
+
+enum CommissionStatus {
+  PENDIENTE
+  PAGADA
+  ANULADA
+}
+
+model User {
+  id                       String                    @id @default(uuid()) @db.Uuid
+  email                    String                    @unique @db.VarChar(254)
+  passwordHash             String                    @db.VarChar(255)
+  fullName                 String                    @db.VarChar(120)
+  phone                    String?                   @db.VarChar(30)
+  role                     UserRole                  @default(CLIENTE)
+  isActive                 Boolean                   @default(true)
+  createdAt                DateTime                  @default(now())
+  updatedAt                DateTime                  @updatedAt
+  properties               Property[]                @relation("PropertyAgent")
+  preferences              ClientPreference?
+  favorites                Favorite[]
+  inquiries                Inquiry[]                 @relation("InquiryClient")
+  assignedInquiries        Inquiry[]                 @relation("InquiryAgent")
+  visitsAsClient           Visit[]                   @relation("VisitClient")
+  visitsAsAgent            Visit[]                   @relation("VisitAgent")
+  opportunities            Opportunity[]             @relation("OpportunityClient")
+  managedOpportunities     Opportunity[]             @relation("OpportunityAgent")
+  followUps                FollowUp[]                @relation("FollowUpResponsible")
+  operationsAsClient       Operation[]               @relation("OperationClient")
+  operationsAsAgent        Operation[]               @relation("OperationAgent")
+  commissions              Commission[]
+  commissionConfigurations CommissionConfiguration[]
+
+  @@index([role, isActive])
+  @@index([createdAt])
+}
+
+model Owner {
+  id         String     @id @default(uuid()) @db.Uuid
+  fullName   String     @db.VarChar(120)
+  email      String?    @db.VarChar(254)
+  phone      String     @db.VarChar(30)
+  notes      String?    @db.Text
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  properties Property[]
+
+  @@index([fullName])
+  @@index([phone])
+}
+
+model Property {
+  id            String           @id @default(uuid()) @db.Uuid
+  code          String           @unique @db.VarChar(32)
+  title         String           @db.VarChar(160)
+  description   String           @db.Text
+  modality      PropertyModality
+  type          PropertyType
+  status        PropertyStatus   @default(DISPONIBLE)
+  price         Decimal          @db.Decimal(14, 2)
+  currency      String           @default("BOB") @db.Char(3)
+  zone          String           @db.VarChar(100)
+  address       String           @db.VarChar(240)
+  bedrooms      Int              @default(0)
+  bathrooms     Int              @default(0)
+  areaM2        Decimal          @db.Decimal(10, 2)
+  hasGarage     Boolean          @default(false)
+  features      String[]         @default([])
+  isDeleted     Boolean          @default(false)
+  ownerId       String           @db.Uuid
+  agentId       String           @db.Uuid
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  owner         Owner            @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+  agent         User             @relation("PropertyAgent", fields: [agentId], references: [id], onDelete: Restrict)
+  images        PropertyImage[]
+  favorites     Favorite[]
+  inquiries     Inquiry[]
+  visits        Visit[]
+  opportunities Opportunity[]
+  operations    Operation[]
+
+  @@index([status, modality, type])
+  @@index([zone, price])
+  @@index([agentId, status])
+  @@index([ownerId])
+}
+
+model PropertyImage {
+  id         String   @id @default(uuid()) @db.Uuid
+  propertyId String   @db.Uuid
+  url        String   @db.VarChar(2048)
+  caption    String?  @db.VarChar(200)
+  position   Int      @default(0)
+  createdAt  DateTime @default(now())
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Restrict)
+
+  @@unique([propertyId, position])
+  @@index([propertyId])
+}
+
+model ClientPreference {
+  id             String             @id @default(uuid()) @db.Uuid
+  clientId       String             @unique @db.Uuid
+  minBudget      Decimal?           @db.Decimal(14, 2)
+  maxBudget      Decimal?           @db.Decimal(14, 2)
+  zones          String[]           @default([])
+  modalities     PropertyModality[] @default([])
+  types          PropertyType[]     @default([])
+  minBedrooms    Int?
+  minBathrooms   Int?
+  minAreaM2      Decimal?           @db.Decimal(10, 2)
+  requiresGarage Boolean?
+  features       String[]           @default([])
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  client         User               @relation(fields: [clientId], references: [id], onDelete: Restrict)
+}
+
+model Favorite {
+  id         String   @id @default(uuid()) @db.Uuid
+  clientId   String   @db.Uuid
+  propertyId String   @db.Uuid
+  createdAt  DateTime @default(now())
+  client     User     @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Restrict)
+
+  @@unique([clientId, propertyId])
+  @@index([clientId, createdAt])
+  @@index([propertyId])
+}
+
+model Inquiry {
+  id            String        @id @default(uuid()) @db.Uuid
+  clientId      String        @db.Uuid
+  propertyId    String        @db.Uuid
+  agentId       String        @db.Uuid
+  opportunityId String?       @db.Uuid
+  message       String        @db.Text
+  status        InquiryStatus @default(NUEVA)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  client        User          @relation("InquiryClient", fields: [clientId], references: [id], onDelete: Restrict)
+  property      Property      @relation(fields: [propertyId], references: [id], onDelete: Restrict)
+  agent         User          @relation("InquiryAgent", fields: [agentId], references: [id], onDelete: Restrict)
+  opportunity   Opportunity?  @relation(fields: [opportunityId], references: [id], onDelete: Restrict)
+
+  @@index([agentId, status, createdAt])
+  @@index([clientId, createdAt])
+}
+
+model Visit {
+  id            String       @id @default(uuid()) @db.Uuid
+  clientId      String       @db.Uuid
+  propertyId    String       @db.Uuid
+  agentId       String       @db.Uuid
+  opportunityId String?      @db.Uuid
+  scheduledAt   DateTime
+  status        VisitStatus  @default(PENDIENTE)
+  notes         String?      @db.Text
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  client        User         @relation("VisitClient", fields: [clientId], references: [id], onDelete: Restrict)
+  property      Property     @relation(fields: [propertyId], references: [id], onDelete: Restrict)
+  agent         User         @relation("VisitAgent", fields: [agentId], references: [id], onDelete: Restrict)
+  opportunity   Opportunity? @relation(fields: [opportunityId], references: [id], onDelete: Restrict)
+
+  @@index([agentId, status, scheduledAt])
+  @@index([clientId, scheduledAt])
+  @@index([propertyId, scheduledAt])
+}
+
+model Opportunity {
+  id            String           @id @default(uuid()) @db.Uuid
+  clientId      String           @db.Uuid
+  propertyId    String           @db.Uuid
+  agentId       String           @db.Uuid
+  stage         OpportunityStage @default(NUEVA)
+  lastContactAt DateTime?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  client        User             @relation("OpportunityClient", fields: [clientId], references: [id], onDelete: Restrict)
+  property      Property         @relation(fields: [propertyId], references: [id], onDelete: Restrict)
+  agent         User             @relation("OpportunityAgent", fields: [agentId], references: [id], onDelete: Restrict)
+  inquiries     Inquiry[]
+  visits        Visit[]
+  followUps     FollowUp[]
+  operation     Operation?
+
+  @@index([agentId, stage, updatedAt])
+  @@index([clientId, stage])
+  @@index([propertyId, stage])
+}
+
+model FollowUp {
+  id            String         @id @default(uuid()) @db.Uuid
+  opportunityId String         @db.Uuid
+  responsibleId String         @db.Uuid
+  description   String         @db.Text
+  dueAt         DateTime
+  completedAt   DateTime?
+  status        FollowUpStatus @default(PENDIENTE)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  opportunity   Opportunity    @relation(fields: [opportunityId], references: [id], onDelete: Restrict)
+  responsible   User           @relation("FollowUpResponsible", fields: [responsibleId], references: [id], onDelete: Restrict)
+
+  @@index([responsibleId, status, dueAt])
+  @@index([opportunityId, status])
+}
+
+model Operation {
+  id            String          @id @default(uuid()) @db.Uuid
+  opportunityId String          @unique @db.Uuid
+  propertyId    String          @db.Uuid
+  clientId      String          @db.Uuid
+  agentId       String          @db.Uuid
+  amount        Decimal         @db.Decimal(14, 2)
+  currency      String          @default("BOB") @db.Char(3)
+  status        OperationStatus @default(REGISTRADA)
+  operatedAt    DateTime        @default(now())
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  opportunity   Opportunity     @relation(fields: [opportunityId], references: [id], onDelete: Restrict)
+  property      Property        @relation(fields: [propertyId], references: [id], onDelete: Restrict)
+  client        User            @relation("OperationClient", fields: [clientId], references: [id], onDelete: Restrict)
+  agent         User            @relation("OperationAgent", fields: [agentId], references: [id], onDelete: Restrict)
+  commission    Commission?
+
+  @@index([agentId, operatedAt])
+  @@index([propertyId, operatedAt])
+  @@index([status, operatedAt])
+}
+
+model Commission {
+  id          String           @id @default(uuid()) @db.Uuid
+  operationId String           @unique @db.Uuid
+  agentId     String           @db.Uuid
+  ratePercent Decimal          @db.Decimal(5, 2)
+  amount      Decimal          @db.Decimal(14, 2)
+  currency    String           @default("BOB") @db.Char(3)
+  status      CommissionStatus @default(PENDIENTE)
+  paidAt      DateTime?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  operation   Operation        @relation(fields: [operationId], references: [id], onDelete: Restrict)
+  agent       User             @relation(fields: [agentId], references: [id], onDelete: Restrict)
+
+  @@index([agentId, status, createdAt])
+}
+
+model CommissionConfiguration {
+  id             String   @id @default("INMO360") @db.VarChar(32)
+  ratePercent    Decimal  @db.Decimal(5, 2)
+  configuredById String   @db.Uuid
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  configuredBy   User     @relation(fields: [configuredById], references: [id], onDelete: Restrict)
+}

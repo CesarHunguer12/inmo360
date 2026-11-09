@@ -1,0 +1,234 @@
+{
+  "info": {
+    "_postman_id": "97c27e20-c5ec-40b0-b93c-360b463a091c",
+    "name": "INMO360 API",
+    "description": "Solicitudes principales para el backend INMO360. Requiere PostgreSQL y credenciales configuradas para desarrollo.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3001" },
+    { "key": "token", "value": "" },
+    { "key": "propertyId", "value": "" },
+    { "key": "imageId", "value": "" },
+    { "key": "userId", "value": "" },
+    { "key": "ownerId", "value": "" },
+    { "key": "email", "value": "" },
+    { "key": "password", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register client",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\"email\":\"client@example.test\",\"fullName\":\"Development Client\",\"password\":\"replace-with-a-strong-password\"}" },
+            "url": "{{baseUrl}}/auth/register"
+          }
+        },
+        {
+          "name": "Login",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": [
+                "if (pm.response.code === 201 || pm.response.code === 200) {",
+                "  const body = pm.response.json();",
+                "  if (body.accessToken) pm.collectionVariables.set('token', body.accessToken);",
+                "}"
+              ]
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\"email\":\"{{email}}\",\"password\":\"{{password}}\"}" },
+            "url": "{{baseUrl}}/auth/login"
+          }
+        },
+        {
+          "name": "Current user",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/auth/me"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Public properties",
+      "item": [
+        {
+          "name": "List available properties",
+          "request": { "method": "GET", "url": "{{baseUrl}}/properties" }
+        },
+        {
+          "name": "Get available property",
+          "request": { "method": "GET", "url": "{{baseUrl}}/properties/{{propertyId}}" }
+        }
+      ]
+    },
+    {
+      "name": "Client flows",
+      "item": [
+        {
+          "name": "Set preferences",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"zones\":[],\"modalities\":[\"VENTA\"],\"types\":[\"DEPARTAMENTO\"],\"features\":[]}"
+            },
+            "url": "{{baseUrl}}/preferences/me"
+          }
+        },
+        {
+          "name": "Get recommendations",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/recommendations/me"
+          }
+        },
+        {
+          "name": "Create inquiry",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\"propertyId\":\"{{propertyId}}\",\"message\":\"Solicitud demostrativa de información\"}" },
+            "url": "{{baseUrl}}/inquiries"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Agent workflows",
+      "item": [
+        {
+          "name": "Prioritized opportunities",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/opportunities/prioritized"
+          }
+        },
+        {
+          "name": "Agent dashboard",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/dashboard/agent"
+          }
+        },
+        {
+          "name": "Summary report",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/reports/summary"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Administration",
+      "item": [
+        {
+          "name": "List users (administrator)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/users"
+          }
+        },
+        {
+          "name": "Create agent (administrator)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"agent@example.test\",\"fullName\":\"Development Agent\",\"password\":\"replace-with-a-strong-password\",\"role\":\"AGENTE\"}"
+            },
+            "url": "{{baseUrl}}/users"
+          }
+        },
+        {
+          "name": "Update user status (administrator)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\"isActive\":false}" },
+            "url": "{{baseUrl}}/users/{{userId}}/status"
+          }
+        },
+        {
+          "name": "List properties report (administrator/agent)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/reports/properties?from=2026-01-01T00:00:00.000Z&to=2026-12-31T23:59:59.999Z"
+          }
+        },
+        {
+          "name": "Export visits report CSV (administrator/agent)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/reports/visits/export.csv"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Property images (administrator/assigned agent)",
+      "item": [
+        {
+          "name": "List property images",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/properties/{{propertyId}}/images"
+          }
+        },
+        {
+          "name": "Add image URL",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\"url\":\"https://example.test/property.jpg\",\"caption\":\"Front view\",\"position\":0}" },
+            "url": "{{baseUrl}}/properties/{{propertyId}}/images"
+          }
+        },
+        {
+          "name": "Remove image association",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/properties/{{propertyId}}/images/{{imageId}}"
+          }
+        }
+      ]
+    }
+  ]
+}
